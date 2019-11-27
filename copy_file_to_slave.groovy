@@ -1,6 +1,8 @@
 node('master') {
     echo "${AKAMAI_CDN_PURGE_URI_FILE}"
     def cdn_purge_file = "${WORKSPACE}/${AKAMAI_CDN_PURGE_URI_FILE}"
+    sh 'mkdir -p ${WORKSPACE}/tmp'
+    sh 'mkdir -p ${WORKSPACE}/done'
     sh 'mv ${WORKSPACE}/${AKAMAI_CDN_PURGE_URI_FILE} ${WORKSPACE}/tmp/akamai_purge_uris.txt'
     dir("${WORKSPACE}/tmp") {
           stash 'master-file'
