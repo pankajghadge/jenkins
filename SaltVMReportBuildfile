@@ -1,0 +1,59 @@
+def salt_syndic_by_instance = [
+    "VM-1": "VM_NAME_1",
+    "VM-2": "VM_NAME_2",
+    "VM-3": "VM_NAME_3",
+    "VM-4": "VM_NAME_4",
+    "VM-5": "VM_NAME_5",
+]
+
+def get_stage_by_instance(String instance, String syndic) {
+    return {
+        node('root_'+syndic) {
+            stage(instance){
+                sh 'mkdir -p /tmp/salt'
+                sh(script: 'salt "*" grains.item fqdn fqdn_ip4 num_cpus mem_total os osrelease description:role description:geo --out=json --static &> /tmp/salt/'+syndic+'.json')
+                sh(script: 'salt "*" status.diskusage / --out=json --static &> /tmp/salt/'+syndic+'-disk.json')
+            }
+            dir("/tmp/salt") {
+                stash instance+'salt-file'
+            }
+        }
+    }
+}
+
+node('master'){
+      def pipeline_job_status = true
+          sh 'mkdir -p /tmp/salt'
+
+      stage('SALT VM Report') {
+          def stages = [:]
+          salt_syndic_by_instance.each { instance, syndic -> stages.put(instance, get_stage_by_instance(instance, syndic))}
+          try{
+                parallel(stages)
+          }
+          catch(e){
+                currentBuild.result = "FAILURE"
+                pipeline_job_status = false
+          }
+      }
+      stage('Download SALT JSON') {
+          dir("/tmp/salt") {
+               salt_syndic_by_instance.each { instance, syndic ->
+                           unstash instance+'salt-file'
+               }
+          }
+      }
+      stage ('Generate HTML') {
+          // Generate HTML using Python Script
+          sh(script: 'python /var/local/python/salt_vm_report.py '+ "${WORKSPACE}")
+          // publish html
+          publishHTML target: [
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'salt_report',
+                reportFiles: 'index.html',
+                reportName: 'VM Report'
+          ]
+      }
+}
