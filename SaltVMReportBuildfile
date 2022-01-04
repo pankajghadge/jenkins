@@ -11,7 +11,7 @@ def get_stage_by_instance(String instance, String syndic) {
         node('root_'+syndic) {
             stage(instance){
                 sh 'mkdir -p /tmp/salt'
-                sh(script: 'salt "*" grains.item fqdn fqdn_ip4 num_cpus mem_total os osrelease description:role description:geo --out=json --static &> /tmp/salt/'+syndic+'.json')
+                sh(script: 'salt "*" grains.item fqdn fqdn_ip4 num_cpus mem_total os osrelease --out=json --static &> /tmp/salt/'+syndic+'.json')
                 sh(script: 'salt "*" status.diskusage / --out=json --static &> /tmp/salt/'+syndic+'-disk.json')
             }
             dir("/tmp/salt") {
